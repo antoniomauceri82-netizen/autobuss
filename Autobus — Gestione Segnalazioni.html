@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autobus — Gestione Segnalazioni</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0f13;
+    --panel: #16181f;
+    --card: #1c1f2a;
+    --border: #2a2d3a;
+    --accent: #f0c040;
+    --red: #ef4444;
+    --green: #22c55e;
+    --orange: #f97316;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --font-mono: 'Space Mono', monospace;
+    --font-sans: 'DM Sans', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-sans); min-height: 100vh; display: flex; flex-direction: column; }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 32px; border-bottom: 1px solid var(--border);
+    background: var(--panel); position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-family: var(--font-mono); font-size: 1.1rem; color: var(--accent); letter-spacing: 2px; }
+  .header-date { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
+
+  main { flex: 1; padding: 28px 32px; max-width: 860px; margin: 0 auto; width: 100%; }
+
+  /* STAT */
+  .stats-bar { display: flex; gap: 14px; margin-bottom: 28px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; display: flex; flex-direction: column; gap: 6px; min-width: 180px; }
+  .stat-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-family: var(--font-mono); }
+  .stat-value { font-size: 2rem; font-weight: 600; font-family: var(--font-mono); line-height: 1; color: var(--accent); }
+
+  /* ADD BUS */
+  .add-bus-area { margin-bottom: 24px; }
+  .btn-aggiungi-autobus { background: var(--accent); color: #000; border: none; border-radius: 8px; padding: 11px 22px; font-family: var(--font-mono); font-weight: 700; font-size: 0.82rem; cursor: pointer; letter-spacing: 0.5px; transition: opacity 0.15s; }
+  .btn-aggiungi-autobus:hover { opacity: 0.85; }
+  .add-bus-form { display: none; margin-top: 14px; background: var(--card); border: 1px solid var(--accent); border-radius: 10px; padding: 18px 20px; flex-direction: row; align-items: flex-end; gap: 12px; }
+  .add-bus-form.open { display: flex; }
+  .add-bus-form .field { display: flex; flex-direction: column; gap: 5px; }
+  .add-bus-form label { font-family: var(--font-mono); font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .add-bus-input { background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 10px 16px; border-radius: 8px; font-family: var(--font-mono); font-size: 0.9rem; outline: none; transition: border-color 0.15s; width: 260px; }
+  .add-bus-input::placeholder { color: var(--muted); }
+  .add-bus-input:focus { border-color: var(--accent); }
+  .btn-save-bus { background: var(--accent); color: #000; border: none; border-radius: 8px; padding: 10px 20px; font-family: var(--font-mono); font-weight: 700; font-size: 0.78rem; cursor: pointer; transition: opacity 0.15s; }
+  .btn-save-bus:hover { opacity: 0.85; }
+  .btn-cancel-bus { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 10px 16px; font-family: var(--font-mono); font-size: 0.78rem; cursor: pointer; }
+  .btn-cancel-bus:hover { color: var(--text); border-color: var(--muted); }
+
+  /* BUS GRID */
+  .bus-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 32px; }
+  .bus-tile { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 12px; cursor: pointer; transition: all 0.15s; }
+  .bus-tile:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .bus-tile.has-issues { border-left: 3px solid var(--red); }
+  .bus-tile.selected { }
+  .bus-number { font-family: var(--font-mono); font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+  .bus-count { font-size: 0.75rem; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+  .dot-red { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex-shrink: 0; }
+
+  /* BUS DETAIL */
+  .bus-detail { background: var(--card); border: 1px solid var(--accent); border-radius: 12px; padding: 20px; margin-bottom: 24px; display: none; }
+  .bus-detail.open { display: block; }
+  .bus-detail-num { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 700; color: var(--accent); margin-bottom: 16px; }
+
+  /* SEGNALAZIONE ROW */
+  .seg-row { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+  .seg-row-desc { flex: 1; font-size: 0.92rem; font-weight: 500; }
+  .btn-edit { background: none; border: 1px solid var(--border); color: var(--muted); padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 0.78rem; font-family: var(--font-mono); transition: all 0.15s; }
+  .btn-edit:hover { color: var(--text); border-color: var(--muted); }
+  .btn-del { background: none; border: 1px solid var(--border); color: var(--muted); padding: 5px 8px; border-radius: 6px; cursor: pointer; font-size: 0.78rem; transition: all 0.15s; }
+  .btn-del:hover { color: var(--red); border-color: var(--red); }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 32px; width: 500px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+  .modal h2 { font-family: var(--font-mono); font-size: 1rem; color: var(--accent); margin-bottom: 24px; letter-spacing: 1px; }
+  .form-group { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-family: var(--font-mono); margin-bottom: 6px; }
+  .form-control { width: 100%; background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 10px 14px; border-radius: 8px; font-family: var(--font-sans); font-size: 0.9rem; outline: none; transition: border-color 0.15s; }
+  .form-control:focus { border-color: var(--accent); }
+  select.form-control option { background: var(--card); }
+  textarea.form-control { resize: vertical; min-height: 100px; }
+  .btn-primary { background: var(--accent); color: #000; border: none; padding: 11px 24px; border-radius: 8px; font-weight: 700; font-family: var(--font-sans); font-size: 0.9rem; cursor: pointer; transition: opacity 0.15s; }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-ghost { background: none; border: 1px solid var(--border); color: var(--muted); padding: 11px 20px; border-radius: 8px; font-family: var(--font-sans); font-size: 0.9rem; cursor: pointer; transition: all 0.15s; }
+  .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+
+  /* EMPTY */
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+  .empty-state p { font-size: 0.9rem; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 32px; right: 32px; background: var(--green); color: #000; padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; z-index: 300; display: none; }
+
+  @media (max-width: 768px) {
+    main { padding: 16px; }
+    header { padding: 14px 16px; }
+    .add-bus-form { flex-direction: column; align-items: stretch; }
+    .add-bus-input { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">AUTOBUS</div>
+  <div class="header-date" id="headerDate"></div>
+</header>
+
+<main>
+
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="stat-label">Autobus Totali</div>
+      <div class="stat-value" id="stat-total">0</div>
+    </div>
+  </div>
+
+  <div class="add-bus-area">
+    <button class="btn-aggiungi-autobus" onclick="toggleAddForm()">+ Aggiungi autobus</button>
+    <div class="add-bus-form" id="addBusForm">
+      <div class="field">
+        <label>Matricola</label>
+        <input class="add-bus-input" id="inputMatricola" type="text" placeholder="Es. A4148" maxlength="20">
+      </div>
+      <button class="btn-save-bus" onclick="addBus()">Salva</button>
+      <button class="btn-cancel-bus" onclick="toggleAddForm()">Annulla</button>
+    </div>
+  </div>
+
+  <!-- BUS DETAIL -->
+  <div class="bus-detail" id="busDetail">
+    <div class="bus-detail-num" id="detailNum"></div>
+    <div id="detailContent"></div>
+  </div>
+
+  <!-- BUS GRID -->
+  <div class="bus-grid" id="busGrid"></div>
+
+</main>
+
+<!-- MODAL NUOVA SEGNALAZIONE -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2>NUOVA SEGNALAZIONE</h2>
+    <div class="form-group">
+      <label class="form-label">Descrizione *</label>
+      <textarea class="form-control" id="formDesc" placeholder="Descrivi il problema..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal()">Annulla</button>
+      <button class="btn-primary" onclick="saveSegnalazione()">Salva segnalazione</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MODIFICA SEGNALAZIONE -->
+<div class="modal-overlay" id="editModalOverlay">
+  <div class="modal">
+    <h2>MODIFICA SEGNALAZIONE</h2>
+    <div class="form-group">
+      <label class="form-label">Autobus</label>
+      <select class="form-control" id="editFormBus"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Descrizione *</label>
+      <textarea class="form-control" id="editFormDesc"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeEditModal()">Annulla</button>
+      <button class="btn-primary" onclick="saveEditSeg()">Salva modifiche</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let buses = JSON.parse(localStorage.getItem('autobus_buses') || '[]');
+let segnalazioni = JSON.parse(localStorage.getItem('autobus_seg') || '[]');
+let selectedBus = null;
+let editingSegId = null;
+
+function save() {
+  localStorage.setItem('autobus_buses', JSON.stringify(buses));
+  localStorage.setItem('autobus_seg', JSON.stringify(segnalazioni));
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+document.getElementById('headerDate').textContent = new Date().toLocaleDateString('it-IT', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+// ADD BUS
+function toggleAddForm() {
+  const form = document.getElementById('addBusForm');
+  const isOpen = form.classList.toggle('open');
+  if (isOpen) document.getElementById('inputMatricola').focus();
+  else document.getElementById('inputMatricola').value = '';
+}
+function addBus() {
+  const inp = document.getElementById('inputMatricola');
+  const mat = inp.value.trim();
+  if (!mat) return;
+  if (buses.find(b => b.toLowerCase() === mat.toLowerCase())) { showToast('Matricola già presente!'); return; }
+  buses.push(mat);
+  buses.sort((a, b) => a.localeCompare(b));
+  save(); toggleAddForm(); renderAll(); showToast('Autobus aggiunto!');
+}
+document.getElementById('inputMatricola').addEventListener('keydown', e => { if (e.key === 'Enter') addBus(); });
+
+// MODAL NUOVA
+let currentBusForModal = null;
+
+function openModal(mat) {
+  currentBusForModal = mat;
+  document.getElementById('formDesc').value = '';
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('formDesc').focus(), 100);
+}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+function saveSegnalazione() {
+  const desc = document.getElementById('formDesc').value.trim();
+  if (!desc) { alert('Inserisci una descrizione.'); return; }
+  segnalazioni.push({ id: uid(), bus: currentBusForModal, desc, stato: 'aperta', createdAt: new Date().toISOString() });
+  save(); closeModal(); showToast('Segnalazione salvata!'); renderAll();
+  if (selectedBus) showBusDetail(selectedBus);
+}
+
+// MODAL MODIFICA
+function editSeg(id) {
+  const s = segnalazioni.find(x => x.id === id);
+  if (!s) return;
+  editingSegId = id;
+  const sel = document.getElementById('editFormBus');
+  sel.innerHTML = '';
+  buses.forEach(b => {
+    const opt = document.createElement('option');
+    opt.value = b; opt.textContent = b;
+    if (b === s.bus) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  document.getElementById('editFormDesc').value = s.desc;
+  document.getElementById('editModalOverlay').classList.add('open');
+}
+function closeEditModal() { document.getElementById('editModalOverlay').classList.remove('open'); editingSegId = null; }
+function saveEditSeg() {
+  const desc = document.getElementById('editFormDesc').value.trim();
+  if (!desc) { alert('La descrizione non può essere vuota.'); return; }
+  const s = segnalazioni.find(x => x.id === editingSegId);
+  if (s) { s.desc = desc; s.bus = document.getElementById('editFormBus').value; }
+  save(); closeEditModal(); showToast('Segnalazione aggiornata!'); renderAll();
+  if (selectedBus) showBusDetail(selectedBus);
+}
+
+// DELETE
+function deleteSeg(id) {
+  segnalazioni = segnalazioni.filter(x => x.id !== id);
+  save(); renderAll(); if (selectedBus) showBusDetail(selectedBus);
+}
+
+// RENDER
+function renderAll() {
+  document.getElementById('stat-total').textContent = buses.length;
+  renderBusGrid();
+}
+
+function renderBusGrid() {
+  const grid = document.getElementById('busGrid');
+  if (!buses.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">🚌</div><p>Nessun autobus ancora.<br>Premi "Aggiungi autobus" per iniziare.</p></div>`;
+    return;
+  }
+  grid.innerHTML = '';
+  [...buses].sort((a, b) => a.localeCompare(b)).forEach(mat => {
+    const open = segnalazioni.filter(s => s.bus === mat);
+    const tile = document.createElement('div');
+    tile.className = `bus-tile${open.length ? ' has-issues' : ''}${selectedBus === mat ? ' selected' : ''}`;
+    tile.onclick = () => selectBus(mat);
+    tile.innerHTML = `
+      <div class="bus-number">${mat}</div>
+      ${open.length ? `<div class="bus-count"><span class="dot-red"></span>${open.length} aperta${open.length > 1 ? 'e' : ''}</div>` : ''}`;
+    grid.appendChild(tile);
+  });
+}
+
+function selectBus(mat) {
+  if (selectedBus === mat) {
+    selectedBus = null;
+    document.getElementById('busDetail').classList.remove('open');
+    renderBusGrid();
+  } else {
+    selectedBus = mat;
+    renderBusGrid();
+    showBusDetail(mat);
+  }
+}
+
+function showBusDetail(mat) {
+  const panel = document.getElementById('busDetail');
+  const segs = segnalazioni.filter(s => s.bus === mat);
+  document.getElementById('detailNum').textContent = mat;
+  let html = '';
+  if (!segs.length) {
+    html = '<p style="color:var(--muted);font-size:0.85rem;padding:8px 0 12px;">Nessuna segnalazione per questo autobus.</p>';
+  } else {
+    segs.slice().reverse().forEach(s => {
+      html += `<div class="seg-row">
+        <div class="seg-row-desc">${s.desc}</div>
+        <button class="btn-edit" onclick="editSeg('${s.id}')">✎ Modifica</button>
+        <button class="btn-del" onclick="deleteSeg('${s.id}')">✕</button>
+      </div>`;
+    });
+  }
+  html += `<button class="btn-primary" style="margin-top:8px;font-size:0.82rem;padding:8px 16px;" onclick="openModal('${mat}')">+ Aggiungi segnalazione</button>`;
+  document.getElementById('detailContent').innerHTML = html;
+  panel.classList.add('open');
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+
+renderAll();
+</script>
+</body>
+</html>
